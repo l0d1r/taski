@@ -194,6 +194,8 @@ func (inst *TaskList) ViewTasks() error {
 
 		if task.CompleteAt != nil {
 			tc = task.CompleteAt.Format(time.RFC822)
+		} else {
+			tc = ""
 		}
 
 		cells = append(
