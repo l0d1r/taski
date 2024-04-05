@@ -3,9 +3,10 @@ package task_model
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/alexeyco/simpletable"
 	"io/ioutil"
 	"time"
+
+	"github.com/alexeyco/simpletable"
 )
 
 const (
@@ -34,13 +35,15 @@ func gray(s string) string {
 }
 
 type TaskList struct {
-	store string
-	list  []Task `json:"tasks"`
+	store    string
+	language string
+	list     []Task `json:"tasks"`
 }
 
-func NewTaskList(store string) *TaskList {
+func NewTaskList(store string, language string) *TaskList {
 	return &TaskList{
-		store: store,
+		store:    store,
+		language: language,
 	}
 }
 
@@ -132,10 +135,27 @@ func (inst *TaskList) ViewInfo(index int) error {
 
 	table := simpletable.New()
 
-	table.Header = &simpletable.Header{
-		Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Text: "Info"},
-		},
+	if inst.language == "ENG" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "Info"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Task: %v", inst.list[index-1].Name)},
+		}}
+
+	} else if inst.language == "RUS" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "Подробности"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Задача: %v", inst.list[index-1].Name)},
+		}}
 	}
 
 	if inst.list[index-1].Info != "" {
@@ -156,10 +176,6 @@ func (inst *TaskList) ViewInfo(index int) error {
 
 	table.Body = &simpletable.Body{Cells: cells}
 
-	table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-		{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Task: %v", inst.list[index-1].Name)},
-	}}
-
 	table.Print()
 	fmt.Print("\n")
 
@@ -173,23 +189,54 @@ func (inst *TaskList) ViewTasks() error {
 
 	table := simpletable.New()
 
-	table.Header = &simpletable.Header{
-		Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Text: "ID"},
-			{Align: simpletable.AlignCenter, Text: "Name"},
-			{Align: simpletable.AlignCenter, Text: "Status"},
-			{Align: simpletable.AlignCenter, Text: "CreateAt"},
-			{Align: simpletable.AlignCenter, Text: "CompletedAt"},
-		},
+	if inst.language == "ENG" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "ID"},
+				{Align: simpletable.AlignCenter, Text: "Name"},
+				{Align: simpletable.AlignCenter, Text: "Status"},
+				{Align: simpletable.AlignCenter, Text: "CreateAt"},
+				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
+		}}
+
+	} else if inst.language == "RUS" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "Номер"},
+				{Align: simpletable.AlignCenter, Text: "Задача"},
+				{Align: simpletable.AlignCenter, Text: "Статус"},
+				{Align: simpletable.AlignCenter, Text: "Создано"},
+				{Align: simpletable.AlignCenter, Text: "Выполненно"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Задачи"},
+		}}
 	}
 
 	for idx, task := range inst.list {
+		var t, s string
 		idx++
-		t := blue(task.Name)
-		s := red("no")
-		if task.Done {
-			t = green(task.Name)
-			s = green("yes")
+		if inst.language == "RUS" {
+			t = blue(task.Name)
+			s = red("невыполненна")
+			if task.Done {
+				t = green(task.Name)
+				s = green("выполненна")
+			}
+		} else {
+			t = blue(task.Name)
+			s = red("no")
+			if task.Done {
+				t = green(task.Name)
+				s = green("yes")
+			}
 		}
 
 		if task.CompleteAt != nil {
@@ -211,10 +258,6 @@ func (inst *TaskList) ViewTasks() error {
 	}
 
 	table.Body = &simpletable.Body{Cells: cells}
-
-	table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-		{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
-	}}
 
 	table.Print()
 	fmt.Print("\n")
