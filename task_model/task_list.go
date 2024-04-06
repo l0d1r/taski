@@ -152,7 +152,7 @@ func (inst *TaskList) ViewInfo(index int) error {
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Task: %v", inst.list[index-1].Name)},
+			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Task: %v", green(inst.list[index-1].Name))},
 		}}
 
 	} else if inst.language == "RUS" {
@@ -163,7 +163,7 @@ func (inst *TaskList) ViewInfo(index int) error {
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Задача: %v", inst.list[index-1].Name)},
+			{Align: simpletable.AlignCenter, Span: 1, Text: fmt.Sprintf("Задача: %v", green(inst.list[index-1].Name))},
 		}}
 	}
 
@@ -171,7 +171,7 @@ func (inst *TaskList) ViewInfo(index int) error {
 		cells = append(
 			cells,
 			*&[]*simpletable.Cell{
-				{Text: inst.list[index-1].Info},
+				{Text: green(inst.list[index-1].Info)},
 			},
 		)
 	} else {
