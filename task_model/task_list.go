@@ -20,21 +20,21 @@ const (
 
 func red(s string) string {
 	if len(s) > 30 {
-		s = fmt.Sprintf("%s%s\n%s%s%s", ColorRed, s[:int(len(s)/2)], ColorRed, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf("%s%s\n%s%s%s", ColorRed, s[:int(len(s)/2)], ColorRed, s[int(len(s)/2):], ColorDefault)
 	}
 	return fmt.Sprintf("%s%s%s", ColorRed, s, ColorDefault)
 }
 
 func green(s string) string {
 	if len(s) > 30 {
-		s = fmt.Sprintf("%s%s\n%s%s%s", ColorGreen, s[:int(len(s)/2)], ColorGreen, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf("%s%s\n %s%s%s", ColorGreen, s[:int(len(s)/2)], ColorGreen, s[int(len(s)/2):], ColorDefault)
 	}
 	return fmt.Sprintf("%s%s%s", ColorGreen, s, ColorDefault)
 }
 
 func blue(s string) string {
 	if len(s) > 30 {
-		s = fmt.Sprintf("%s%s\n%s,%s%s", ColorBlue, s[:int(len(s)/2)], ColorBlue, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf("%s%s\n%s,%s%s", ColorBlue, s[:int(len(s)/2)], ColorBlue, s[int(len(s)/2):], ColorDefault)
 	}
 	return fmt.Sprintf("%s%s%s", ColorBlue, s, ColorDefault)
 }
