@@ -7,7 +7,7 @@ type Task struct {
 	Done       bool       `json:"Done"`
 	CreateAt   time.Time  `json:"CreateAt"`
 	CompleteAt *time.Time `json:"CompleteAt"`
-	Info       string     `json:"Info"`
+	Info       string     `json:"Description"`
 }
 
 func NewTask(name string, info string) *Task {
