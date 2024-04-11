@@ -14,13 +14,13 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			description, err := cmd.Flags().GetString("description")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'description': %v\n", err)
 				return
 			}
 
 			index, err := cmd.Flags().GetInt("index")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'index': %v\n", err)
 				return
 			}
 
@@ -29,7 +29,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
-			if len(args) == 0 || args[0] == "" {
+			if len(args) == 0 && description != "" {
 				err = taskList.ChangeDescription(description, index)
 				if err != nil {
 					cmd.PrintErrln(err)
@@ -38,16 +38,33 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
-			err = taskList.Change(args[0], description, index)
+			statusFlag, err := cmd.Flags().GetBool("status")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'status': %v\n", err)
 				return
+			}
+
+			if statusFlag {
+				err = taskList.ChangeStatus(index)
+				if err != nil {
+					cmd.Printf("Error change status task: %v \n", err)
+					return
+				}
+			}
+
+			if len(args) != 0 {
+				err = taskList.Change(args[0], description, index)
+				if err != nil {
+					cmd.Printf("Error change task: %v\n", err)
+					return
+				}
 			}
 		},
 	}
 
 	changeCmd.Flags().StringP("description", "d", "", "Add additional info for task")
 	changeCmd.Flags().IntP("index", "i", 0, "Task index")
+	changeCmd.Flags().BoolP("status", "s", false, "Change task status")
 
 	return changeCmd
 }

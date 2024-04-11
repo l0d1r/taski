@@ -56,20 +56,29 @@ func NewTaskList(store string, language string) *TaskList {
 	}
 }
 
+func (inst *TaskList) Language() string {
+	return inst.language
+}
+
 func (inst *TaskList) SetStore(store string) {
 	inst.store = store
 }
 
-// Complete setup task by index in status done == true
-func (inst *TaskList) Complete(index int) error {
+// ChangeStatus setup task by index in status done == true
+func (inst *TaskList) ChangeStatus(index int) error {
 	if index <= 0 || index > len(inst.list) {
 		return fmt.Errorf("invalid index\n")
 	}
 
 	t := time.Now()
 
-	inst.list[index-1].CompleteAt = &t
-	inst.list[index-1].Done = true
+	if !inst.list[index-1].Done {
+		inst.list[index-1].CompleteAt = &t
+		inst.list[index-1].Done = true
+	} else {
+		inst.list[index-1].CompleteAt = nil
+		inst.list[index-1].Done = false
+	}
 
 	return inst.save()
 }
@@ -246,7 +255,7 @@ func (inst *TaskList) ViewTasks() error {
 				{Align: simpletable.AlignCenter, Text: "Задача"},
 				{Align: simpletable.AlignCenter, Text: "Статус"},
 				{Align: simpletable.AlignCenter, Text: "Создано"},
-				{Align: simpletable.AlignCenter, Text: "Выполненно"},
+				{Align: simpletable.AlignCenter, Text: "Дата/Время Выполнения"},
 			},
 		}
 
@@ -260,17 +269,17 @@ func (inst *TaskList) ViewTasks() error {
 		idx++
 		if inst.language == "RUS" {
 			t = blue(task.Name)
-			s = red("невыполненна")
+			s = red("Не выполнена")
 			if task.Done {
 				t = green(task.Name)
-				s = green("выполненна")
+				s = green("Выполнена")
 			}
 		} else {
 			t = blue(task.Name)
-			s = red("no")
+			s = red("not completed")
 			if task.Done {
 				t = green(task.Name)
-				s = green("yes")
+				s = green("completed")
 			}
 		}
 
@@ -291,6 +300,87 @@ func (inst *TaskList) ViewTasks() error {
 			},
 		)
 	}
+
+	table.Body = &simpletable.Body{Cells: cells}
+
+	table.Print()
+	fmt.Print("\n")
+
+	return nil
+}
+
+func (inst *TaskList) ViewTask(index int) error {
+	var (
+		cells [][]*simpletable.Cell
+		tc    string
+	)
+
+	table := simpletable.New()
+
+	if inst.language == "ENG" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "ID"},
+				{Align: simpletable.AlignCenter, Text: "Name"},
+				{Align: simpletable.AlignCenter, Text: "Status"},
+				{Align: simpletable.AlignCenter, Text: "CreateAt"},
+				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
+		}}
+
+	} else if inst.language == "RUS" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "Номер"},
+				{Align: simpletable.AlignCenter, Text: "Задача"},
+				{Align: simpletable.AlignCenter, Text: "Статус"},
+				{Align: simpletable.AlignCenter, Text: "Создано"},
+				{Align: simpletable.AlignCenter, Text: "Выполненно"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Задачи"},
+		}}
+	}
+
+	var t, s string
+	if inst.language == "RUS" {
+		t = blue(inst.list[index-1].Name)
+		s = red("невыполненна")
+		if inst.list[index-1].Done {
+			t = green(inst.list[index-1].Name)
+			s = green("выполненна")
+		}
+	} else {
+		t = blue(inst.list[index-1].Name)
+		s = red("no")
+		if inst.list[index-1].Done {
+			t = green(inst.list[index-1].Name)
+			s = green("yes")
+		}
+	}
+
+	if inst.list[index-1].CompleteAt != nil {
+		tc = inst.list[index-1].CompleteAt.Format(time.RFC822)
+	} else {
+		tc = ""
+	}
+
+	cells = append(
+		cells,
+		*&[]*simpletable.Cell{
+			{Text: fmt.Sprintf("%d", index)},
+			{Text: t},
+			{Text: fmt.Sprintf("%s", s)},
+			{Text: inst.list[index-1].CreateAt.Format(time.RFC822)},
+			{Text: tc},
+		},
+	)
 
 	table.Body = &simpletable.Body{Cells: cells}
 

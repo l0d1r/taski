@@ -14,13 +14,13 @@ func NewViewCmd(taskList *task_model.TaskList) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			indexFlag, err := cmd.Flags().GetInt("index")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'index': %v\n", err)
 				return
 			}
 
 			descriptionFlag, err := cmd.Flags().GetBool("description")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'desctiption': %v\n", err)
 				return
 			}
 
@@ -42,14 +42,14 @@ func NewViewCmd(taskList *task_model.TaskList) *cobra.Command {
 			if indexFlag != 0 {
 				err = taskList.ViewTask(indexFlag)
 				if err != nil {
-					cmd.PrintErrln(err)
+					cmd.Printf("Error viewing task: %v\n", err)
 				}
 				return
 			}
 
 			err = taskList.ViewTasks()
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error viewing task's: %v\n", err)
 				return
 			}
 		},

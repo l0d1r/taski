@@ -14,7 +14,7 @@ func NewDeleteCmd(taskList *task_model.TaskList) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			index, err := cmd.Flags().GetInt("index")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'index': %v\n", err)
 				return
 			}
 
@@ -25,7 +25,7 @@ func NewDeleteCmd(taskList *task_model.TaskList) *cobra.Command {
 
 			err = taskList.Delete(index)
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error deleting task: %v\n", err)
 				return
 			}
 		},

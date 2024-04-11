@@ -13,13 +13,13 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			info, err := cmd.Flags().GetString("description")
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error getting flag 'description': %v\n", err)
 				return
 			}
 
 			err = taskList.Add(args[0], info)
 			if err != nil {
-				cmd.PrintErrln(err)
+				cmd.Printf("Error adding task: %v\n", err)
 				return
 			}
 		},
