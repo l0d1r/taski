@@ -108,15 +108,18 @@ func (inst *TaskList) LoadFromStore() error {
 
 // Load method loading task descripton from file
 func (inst *TaskList) Load(filename string) error {
+	var tasks []Task
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(file, inst)
+	err = json.Unmarshal(file, &tasks)
 	if err != nil {
 		return err
 	}
+
+	inst.list = tasks
 
 	return nil
 }
@@ -125,6 +128,28 @@ func (inst *TaskList) Add(name string, info string) error {
 	inst.list = append(inst.list, *NewTask(name, info))
 	return inst.save()
 }
+
+func (inst *TaskList) Change(task, info string, idx int) error {
+	if idx <= 0 || idx > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+
+	inst.list[idx-1].Name = task
+	inst.list[idx-1].Info = info
+
+	return inst.save()
+}
+
+func (inst *TaskList) ChangeDescription(info string, idx int) error {
+	if idx <= 0 || idx > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+
+	inst.list[idx-1].Info = info
+
+	return inst.save()
+}
+
 func (inst *TaskList) AddInfo(index int, info string) error {
 	if index <= 0 || index > len(inst.list) {
 		return fmt.Errorf("invalid index\n")
@@ -147,7 +172,7 @@ func (inst *TaskList) ViewInfo(index int) error {
 	if inst.language == "ENG" {
 		table.Header = &simpletable.Header{
 			Cells: []*simpletable.Cell{
-				{Align: simpletable.AlignCenter, Text: "Info"},
+				{Align: simpletable.AlignCenter, Text: "Description"},
 			},
 		}
 
@@ -190,6 +215,7 @@ func (inst *TaskList) ViewInfo(index int) error {
 
 	return nil
 }
+
 func (inst *TaskList) ViewTasks() error {
 	var (
 		cells [][]*simpletable.Cell
@@ -265,6 +291,87 @@ func (inst *TaskList) ViewTasks() error {
 			},
 		)
 	}
+
+	table.Body = &simpletable.Body{Cells: cells}
+
+	table.Print()
+	fmt.Print("\n")
+
+	return nil
+}
+
+func (inst *TaskList) ViewTask(index int) error {
+	var (
+		cells [][]*simpletable.Cell
+		tc    string
+	)
+
+	table := simpletable.New()
+
+	if inst.language == "ENG" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "ID"},
+				{Align: simpletable.AlignCenter, Text: "Name"},
+				{Align: simpletable.AlignCenter, Text: "Status"},
+				{Align: simpletable.AlignCenter, Text: "CreateAt"},
+				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
+		}}
+
+	} else if inst.language == "RUS" {
+		table.Header = &simpletable.Header{
+			Cells: []*simpletable.Cell{
+				{Align: simpletable.AlignCenter, Text: "Номер"},
+				{Align: simpletable.AlignCenter, Text: "Задача"},
+				{Align: simpletable.AlignCenter, Text: "Статус"},
+				{Align: simpletable.AlignCenter, Text: "Создано"},
+				{Align: simpletable.AlignCenter, Text: "Выполненно"},
+			},
+		}
+
+		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
+			{Align: simpletable.AlignCenter, Span: 5, Text: "Задачи"},
+		}}
+	}
+
+	var t, s string
+	if inst.language == "RUS" {
+		t = blue(inst.list[index-1].Name)
+		s = red("невыполненна")
+		if inst.list[index-1].Done {
+			t = green(inst.list[index-1].Name)
+			s = green("выполненна")
+		}
+	} else {
+		t = blue(inst.list[index-1].Name)
+		s = red("no")
+		if inst.list[index-1].Done {
+			t = green(inst.list[index-1].Name)
+			s = green("yes")
+		}
+	}
+
+	if inst.list[index-1].CompleteAt != nil {
+		tc = inst.list[index-1].CompleteAt.Format(time.RFC822)
+	} else {
+		tc = ""
+	}
+
+	cells = append(
+		cells,
+		*&[]*simpletable.Cell{
+			{Text: fmt.Sprintf("%d", index)},
+			{Text: t},
+			{Text: fmt.Sprintf("%s", s)},
+			{Text: inst.list[index-1].CreateAt.Format(time.RFC822)},
+			{Text: tc},
+		},
+	)
 
 	table.Body = &simpletable.Body{Cells: cells}
 
