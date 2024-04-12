@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/alexeyco/simpletable"
@@ -19,22 +20,40 @@ const (
 )
 
 func red(s string) string {
+	w := strings.Fields(s)
 	if len(s) > 30 {
-		return fmt.Sprintf("%s%s\n%s%s%s", ColorRed, s[:int(len(s)/2)], ColorRed, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf(
+			"%s%s%s",
+			ColorRed,
+			fmt.Sprintf("%v%s\n%s%v%s", strings.Join(w[:len(w)/2], " "), ColorDefault, ColorRed, strings.Join(w[len(w)/2:], " "), ColorDefault),
+			ColorDefault,
+		)
 	}
 	return fmt.Sprintf("%s%s%s", ColorRed, s, ColorDefault)
 }
 
 func green(s string) string {
+	w := strings.Fields(s)
 	if len(s) > 30 {
-		return fmt.Sprintf("%s%s\n %s%s%s", ColorGreen, s[:int(len(s)/2)], ColorGreen, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf(
+			"%s%s%s",
+			ColorGreen,
+			fmt.Sprintf("%v%s\n%s%v%s", strings.Join(w[:len(w)/2], " "), ColorDefault, ColorGreen, strings.Join(w[len(w)/2:], " "), ColorDefault),
+			ColorDefault,
+		)
 	}
 	return fmt.Sprintf("%s%s%s", ColorGreen, s, ColorDefault)
 }
 
 func blue(s string) string {
+	w := strings.Fields(s)
 	if len(s) > 30 {
-		return fmt.Sprintf("%s%s\n%s,%s%s", ColorBlue, s[:int(len(s)/2)], ColorBlue, s[int(len(s)/2):], ColorDefault)
+		return fmt.Sprintf(
+			"%s%s%s",
+			ColorBlue,
+			fmt.Sprintf("%v%s\n%s%v%s", strings.Join(w[:len(w)/2], " "), ColorDefault, ColorBlue, strings.Join(w[len(w)/2:], " "), ColorDefault),
+			ColorDefault,
+		)
 	}
 	return fmt.Sprintf("%s%s%s", ColorBlue, s, ColorDefault)
 }
