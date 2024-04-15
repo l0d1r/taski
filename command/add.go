@@ -25,17 +25,23 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
-			finishFlagT, err := time.Parse(time.DateOnly, finishFlag)
-			if err != nil {
-				cmd.Printf("Error parsing flag 'finish': %v\n", err)
-				return
+			finishFlagT := new(time.Time)
+			if finishFlag != "" {
+				*finishFlagT, err = time.Parse(time.DateOnly, finishFlag)
+				if err != nil {
+					cmd.Printf("Error parsing flag 'finish': %v\n", err)
+					return
+				}
+			} else {
+				finishFlagT = nil
 			}
 
-			err = taskList.Add(strings.Join(args, " "), info, &finishFlagT)
+			err = taskList.Add(strings.Join(args, " "), info, finishFlagT)
 			if err != nil {
 				cmd.Printf("Error adding task: %v\n", err)
 				return
 			}
+
 		},
 	}
 
