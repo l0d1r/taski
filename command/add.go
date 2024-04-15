@@ -2,7 +2,9 @@ package command
 
 import (
 	"github.com/spf13/cobra"
+	"strings"
 	"task/task_model"
+	"time"
 )
 
 func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
@@ -17,7 +19,19 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
-			err = taskList.Add(args[0], info)
+			finishFlag, err := cmd.Flags().GetString("finish")
+			if err != nil {
+				cmd.Printf("Error getting flag 'finish': %v\n", err)
+				return
+			}
+
+			finishFlagT, err := time.Parse(time.DateOnly, finishFlag)
+			if err != nil {
+				cmd.Printf("Error parsing flag 'finish': %v\n", err)
+				return
+			}
+
+			err = taskList.Add(strings.Join(args, " "), info, &finishFlagT)
 			if err != nil {
 				cmd.Printf("Error adding task: %v\n", err)
 				return
@@ -26,6 +40,6 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 	}
 
 	addCmd.Flags().StringP("description", "d", "", "Add additional info for task")
-
+	addCmd.Flags().StringP("finish", "f", "", "Due finish date for task, format (2024-12-31), (yyyy-mm-dd)")
 	return addCmd
 }

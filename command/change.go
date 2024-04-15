@@ -2,7 +2,9 @@ package command
 
 import (
 	"github.com/spf13/cobra"
+	"strings"
 	"task/task_model"
+	"time"
 )
 
 func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
@@ -12,12 +14,6 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 		Long:  ``,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			description, err := cmd.Flags().GetString("description")
-			if err != nil {
-				cmd.Printf("Error getting flag 'description': %v\n", err)
-				return
-			}
-
 			index, err := cmd.Flags().GetInt("index")
 			if err != nil {
 				cmd.Printf("Error getting flag 'index': %v\n", err)
@@ -29,12 +25,15 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
-			if len(args) == 0 && description != "" {
-				err = taskList.ChangeDescription(description, index)
-				if err != nil {
-					cmd.PrintErrln(err)
-					return
-				}
+			finishFlag, err := cmd.Flags().GetString("finish")
+			if err != nil {
+				cmd.Printf("Error getting flag 'finish': %v\n", err)
+				return
+			}
+
+			description, err := cmd.Flags().GetString("description")
+			if err != nil {
+				cmd.Printf("Error getting flag 'description': %v\n", err)
 				return
 			}
 
@@ -42,6 +41,20 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 			if err != nil {
 				cmd.Printf("Error getting flag 'status': %v\n", err)
 				return
+			}
+
+			if finishFlag != "" {
+				finishFlagT, err := time.Parse(time.DateOnly, finishFlag)
+				if err != nil {
+					cmd.Printf("Error parsing flag 'finish': %v\n", err)
+					return
+				}
+
+				err = taskList.ChangeDueFinishDate(&finishFlagT, index)
+				if err != nil {
+					cmd.Printf("Error changing due date: %v\n", err)
+					return
+				}
 			}
 
 			if statusFlag {
@@ -52,8 +65,17 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				}
 			}
 
+			if len(args) == 0 && description != "" {
+				err = taskList.ChangeDescription(description, index)
+				if err != nil {
+					cmd.Printf("Error change description: %v\n", err)
+					return
+				}
+				return
+			}
+
 			if len(args) != 0 {
-				err = taskList.Change(args[0], description, index)
+				err = taskList.Change(strings.Join(args, " "), description, index)
 				if err != nil {
 					cmd.Printf("Error change task: %v\n", err)
 					return
@@ -65,6 +87,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 	changeCmd.Flags().StringP("description", "d", "", "Add additional info for task")
 	changeCmd.Flags().IntP("index", "i", 0, "Task index")
 	changeCmd.Flags().BoolP("status", "s", false, "Change task status")
+	changeCmd.Flags().StringP("finish", "f", "", "Due finish date for task, format (2024-12-31), (yyyy-mm-dd)")
 
 	return changeCmd
 }

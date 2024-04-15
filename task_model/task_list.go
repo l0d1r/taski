@@ -152,8 +152,8 @@ func (inst *TaskList) Load(filename string) error {
 	return nil
 }
 
-func (inst *TaskList) Add(name string, info string) error {
-	inst.list = append(inst.list, *NewTask(name, info))
+func (inst *TaskList) Add(name string, info string, dueFinishDate *time.Time) error {
+	inst.list = append(inst.list, *NewTask(name, info, dueFinishDate))
 	return inst.save()
 }
 
@@ -175,6 +175,14 @@ func (inst *TaskList) ChangeDescription(info string, idx int) error {
 
 	inst.list[idx-1].Info = info
 
+	return inst.save()
+}
+
+func (inst *TaskList) ChangeDueFinishDate(dft *time.Time, idx int) error {
+	if idx <= 0 || idx > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+	inst.list[idx-1].DueFinishDate = dft
 	return inst.save()
 }
 
@@ -260,11 +268,12 @@ func (inst *TaskList) ViewTasks() error {
 				{Align: simpletable.AlignCenter, Text: "Status"},
 				{Align: simpletable.AlignCenter, Text: "CreateAt"},
 				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
+				{Align: simpletable.AlignCenter, Text: "Due Finish Date"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
+			{Align: simpletable.AlignCenter, Span: 6, Text: "Tasks"},
 		}}
 
 	} else if inst.language == "RUS" {
@@ -275,16 +284,17 @@ func (inst *TaskList) ViewTasks() error {
 				{Align: simpletable.AlignCenter, Text: "Статус"},
 				{Align: simpletable.AlignCenter, Text: "Создано"},
 				{Align: simpletable.AlignCenter, Text: "Дата/Время Выполнения"},
+				{Align: simpletable.AlignCenter, Text: "Срок Окончания"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 5, Text: "Задачи"},
+			{Align: simpletable.AlignCenter, Span: 6, Text: "Задачи"},
 		}}
 	}
 
 	for idx, task := range inst.list {
-		var t, s string
+		var t, s, ft string
 		idx++
 		if inst.language == "RUS" {
 			t = blue(task.Name)
@@ -303,9 +313,15 @@ func (inst *TaskList) ViewTasks() error {
 		}
 
 		if task.CompleteAt != nil {
-			tc = task.CompleteAt.Format(time.RFC822)
+			tc = task.CompleteAt.Format(time.DateTime)
 		} else {
 			tc = ""
+		}
+
+		if task.DueFinishDate != nil {
+			ft = task.DueFinishDate.Format(time.DateOnly)
+		} else {
+			ft = ""
 		}
 
 		cells = append(
@@ -314,8 +330,9 @@ func (inst *TaskList) ViewTasks() error {
 				{Text: fmt.Sprintf("%d", idx)},
 				{Text: t},
 				{Text: fmt.Sprintf("%s", s)},
-				{Text: task.CreateAt.Format(time.RFC822)},
+				{Text: task.CreateAt.Format(time.DateTime)},
 				{Text: tc},
+				{Text: ft},
 			},
 		)
 	}
