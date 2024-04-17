@@ -12,26 +12,26 @@ func NewDeleteCmd(taskList *task_model.TaskList) *cobra.Command {
 		Long:  ``,
 
 		Run: func(cmd *cobra.Command, args []string) {
-			index, err := cmd.Flags().GetInt("index")
+			index, err := cmd.Flags().GetIntSlice("index")
 			if err != nil {
 				cmd.Printf("Error getting flag 'index': %v\n", err)
 				return
 			}
 
-			if index == 0 {
+			if len(index) == 0 {
 				cmd.PrintErrln("flag --index is required")
 				return
 			}
 
-			err = taskList.Delete(index)
+			err = taskList.Delete(index...)
 			if err != nil {
 				cmd.Printf("Error deleting task: %v\n", err)
 				return
 			}
 		},
 	}
-
-	deleteCmd.Flags().IntP("index", "i", 0, "Task index")
+	p := make([]int, 0)
+	deleteCmd.Flags().IntSliceVarP(&p, "index", "i", p, "Task index")
 
 	return deleteCmd
 }

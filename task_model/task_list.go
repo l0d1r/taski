@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strings"
 	"time"
 
@@ -103,18 +104,27 @@ func (inst *TaskList) ChangeStatus(index int) error {
 }
 
 // Delete method delete task from list by index
-func (inst *TaskList) Delete(index int) error {
-	if index <= 0 || index > len(inst.list) {
-		return fmt.Errorf("invalid index\n")
-	}
+func (inst *TaskList) Delete(index ...int) error {
+	sort.Sort(sort.Reverse(sort.IntSlice(index)))
+	for _, i := range index {
+		if i <= 0 || i > len(inst.list) {
+			return fmt.Errorf("invalid index\n")
+		}
 
-	if len(inst.list) == 1 {
-		inst.list = nil
-	} else {
-		inst.list = append(inst.list[:index-1], inst.list[index:]...)
+		if len(inst.list) == 1 {
+			inst.list = nil
+		} else {
+			inst.list = append(inst.list[:i-1], inst.list[i:]...)
+		}
 	}
 
 	return inst.save()
+}
+
+func (inst *TaskList) deleteTask(index int) {
+	copy(inst.list[index:], inst.list[index+1:])
+	inst.list[len(inst.list)-1] = Task{}
+	inst.list = inst.list[:len(inst.list)-1]
 }
 
 // LoadFromStore loaded list of task from store
@@ -134,7 +144,7 @@ func (inst *TaskList) LoadFromStore() error {
 	return nil
 }
 
-// Load method loading task descripton from file
+// Load method loading task description from file
 func (inst *TaskList) Load(filename string) error {
 	var tasks []Task
 	file, err := ioutil.ReadFile(filename)
