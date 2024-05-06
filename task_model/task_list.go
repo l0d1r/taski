@@ -77,10 +77,12 @@ func NewTaskList(store string, language string) *TaskList {
 	}
 }
 
+// Language return current language of view table
 func (inst *TaskList) Language() string {
 	return inst.language
 }
 
+// SetStore setting getting path of store tasks list
 func (inst *TaskList) SetStore(store string) {
 	inst.store = store
 }
@@ -130,6 +132,7 @@ func (inst *TaskList) Delete(index ...int) error {
 	return inst.save()
 }
 
+// DeleteLinkedTasks delete getting tasks from linked tasks list
 func (inst *TaskList) DeleteLinkedTasks(taskIndex int, deletedTask ...int) error {
 	if taskIndex <= 0 || taskIndex > len(inst.list) {
 		return fmt.Errorf("invalid index\n")

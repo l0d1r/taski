@@ -105,7 +105,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 
 	p := make([]int, 0)
 
-	changeCmd.Flags().IntSliceVarP(&p, "linkedTask", "l", p, "Linked task index")
+	changeCmd.Flags().IntSliceVarP(&p, "linkedTasks", "l", p, "Linked task index")
 	changeCmd.Flags().StringP("description", "d", "", "Add additional info for task")
 	changeCmd.Flags().IntP("index", "i", 0, "Task index")
 	changeCmd.Flags().BoolP("status", "s", false, "Change task status")
