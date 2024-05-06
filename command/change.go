@@ -21,7 +21,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 			}
 
 			if index == 0 {
-				cmd.PrintErrln("flag --index is required")
+				cmd.PrintErrln("flag --index is required\n")
 				return
 			}
 
@@ -43,6 +43,22 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
+			linkedTasksFlag, err := cmd.Flags().GetIntSlice("linkedTasks")
+			if err != nil {
+				cmd.Printf("Error getting flag 'linkedTasks': %v\n", err)
+				return
+			}
+
+			// change linked tasks for task
+			if len(linkedTasksFlag) != 0 {
+				err = taskList.ChangeLinkedTasks(index, linkedTasksFlag...)
+				if err != nil {
+					cmd.Printf("Error changing linked tasks: %v\n", err)
+					return
+				}
+			}
+
+			// change do finish time task
 			if finishFlag != "" {
 				finishFlagT, err := time.Parse(time.DateOnly, finishFlag)
 				if err != nil {
@@ -57,6 +73,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				}
 			}
 
+			// change task status
 			if statusFlag {
 				err = taskList.ChangeStatus(index)
 				if err != nil {
@@ -65,6 +82,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				}
 			}
 
+			// change description for task
 			if len(args) == 0 && description != "" {
 				err = taskList.ChangeDescription(description, index)
 				if err != nil {
@@ -74,6 +92,7 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 				return
 			}
 
+			// change name of task
 			if len(args) != 0 {
 				err = taskList.Change(strings.Join(args, " "), description, index)
 				if err != nil {
@@ -84,6 +103,9 @@ func NewChangeCmd(taskList *task_model.TaskList) *cobra.Command {
 		},
 	}
 
+	p := make([]int, 0)
+
+	changeCmd.Flags().IntSliceVarP(&p, "linkedTask", "l", p, "Linked task index")
 	changeCmd.Flags().StringP("description", "d", "", "Add additional info for task")
 	changeCmd.Flags().IntP("index", "i", 0, "Task index")
 	changeCmd.Flags().BoolP("status", "s", false, "Change task status")

@@ -13,6 +13,28 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 		Short: "Add a task",
 
 		Run: func(cmd *cobra.Command, args []string) {
+			index, err := cmd.Flags().GetInt("index")
+			if err != nil {
+				cmd.Printf("Error getting flag 'index': %v\n", err)
+				return
+			}
+
+			linkedTasksFlag, err := cmd.Flags().GetIntSlice("linkedTasks")
+			if err != nil {
+				cmd.Printf("Error getting flag 'linkedTasks': %v\n", err)
+				return
+			}
+
+			// add linked tasks for task
+			if len(linkedTasksFlag) != 0 && index != 0 {
+				err = taskList.AddLinkedTasks(index, linkedTasksFlag...)
+				if err != nil {
+					cmd.Printf("Error adding linked tasks: %v\n", err)
+					return
+				}
+				return
+			}
+
 			info, err := cmd.Flags().GetString("description")
 			if err != nil {
 				cmd.Printf("Error getting flag 'description': %v\n", err)
@@ -36,7 +58,7 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 				finishFlagT = nil
 			}
 
-			err = taskList.Add(strings.Join(args, " "), info, finishFlagT)
+			err = taskList.Add(strings.Join(args, " "), info, finishFlagT, linkedTasksFlag...)
 			if err != nil {
 				cmd.Printf("Error adding task: %v\n", err)
 				return
@@ -45,7 +67,11 @@ func NewAddCmd(taskList *task_model.TaskList) *cobra.Command {
 		},
 	}
 
+	p := make([]int, 0)
+
 	addCmd.Flags().StringP("description", "d", "", "Add additional info for task")
+	addCmd.Flags().IntSliceVarP(&p, "linkedTasks", "l", p, "Linked task index")
+	addCmd.Flags().IntP("index", "i", 0, "Task index")
 	addCmd.Flags().StringP("finish", "f", "", "Due finish date for task, format (2024-12-31), (yyyy-mm-dd)")
 	return addCmd
 }

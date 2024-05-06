@@ -1,6 +1,7 @@
 package task_model
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -22,7 +23,7 @@ const (
 
 func red(s string) string {
 	w := strings.Fields(s)
-	if len(s) > 30 {
+	if len(s) > 50 {
 		return fmt.Sprintf(
 			"%s%s%s",
 			ColorRed,
@@ -35,7 +36,7 @@ func red(s string) string {
 
 func green(s string) string {
 	w := strings.Fields(s)
-	if len(s) > 30 {
+	if len(s) > 50 {
 		return fmt.Sprintf(
 			"%s%s%s",
 			ColorGreen,
@@ -48,7 +49,7 @@ func green(s string) string {
 
 func blue(s string) string {
 	w := strings.Fields(s)
-	if len(s) > 30 {
+	if len(s) > 50 {
 		return fmt.Sprintf(
 			"%s%s%s",
 			ColorBlue,
@@ -114,6 +115,14 @@ func (inst *TaskList) Delete(index ...int) error {
 		if len(inst.list) == 1 {
 			inst.list = nil
 		} else {
+			deleteTaskUuid := inst.list[i-1].Uuid
+
+			for _, t := range inst.list {
+				if _, ok := t.LinkedTask[deleteTaskUuid]; ok {
+					delete(t.LinkedTask, deleteTaskUuid)
+				}
+			}
+
 			inst.list = append(inst.list[:i-1], inst.list[i:]...)
 		}
 	}
@@ -121,10 +130,19 @@ func (inst *TaskList) Delete(index ...int) error {
 	return inst.save()
 }
 
-func (inst *TaskList) deleteTask(index int) {
-	copy(inst.list[index:], inst.list[index+1:])
-	inst.list[len(inst.list)-1] = Task{}
-	inst.list = inst.list[:len(inst.list)-1]
+func (inst *TaskList) DeleteLinkedTasks(taskIndex int, deletedTask ...int) error {
+	if taskIndex <= 0 || taskIndex > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+
+	for _, dt := range deletedTask {
+		if dt <= 0 || dt > len(inst.list) {
+			return fmt.Errorf("invalid index of linked task: %d\n", dt)
+		}
+		delete(inst.list[taskIndex-1].LinkedTask, inst.list[dt-1].Uuid)
+	}
+
+	return inst.save()
 }
 
 // LoadFromStore loaded list of task from store
@@ -162,8 +180,44 @@ func (inst *TaskList) Load(filename string) error {
 	return nil
 }
 
-func (inst *TaskList) Add(name string, info string, dueFinishDate *time.Time) error {
-	inst.list = append(inst.list, *NewTask(name, info, dueFinishDate))
+func (inst *TaskList) Add(name string, info string, dueFinishDate *time.Time, linkedTask ...int) error {
+	var linkedTasksUuid = make(map[string]struct{}, 0)
+
+	for _, task := range linkedTask {
+		if task <= 0 || task > len(inst.list) {
+			return fmt.Errorf("invalid index\n")
+		}
+		if inst.list[task-1].Uuid == "" {
+			uuid := sha1.New()
+			uuid.Write([]byte(fmt.Sprintf("%s%s", name, time.Now().String())))
+			inst.list[task-1].Uuid = fmt.Sprintf("%x", uuid.Sum(nil))
+		}
+		linkedTasksUuid[inst.list[task-1].Uuid] = struct{}{}
+	}
+
+	inst.list = append(inst.list, *NewTask(name, info, dueFinishDate, linkedTasksUuid))
+	return inst.save()
+}
+
+func (inst *TaskList) AddLinkedTasks(task int, linkedTasks ...int) error {
+	if task <= 0 || task > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+
+	for _, tn := range linkedTasks {
+		if tn <= 0 || tn > len(inst.list) {
+			return fmt.Errorf("invalid index\n")
+		}
+
+		if inst.list[tn-1].Uuid == "" {
+			uuid := sha1.New()
+			uuid.Write([]byte(fmt.Sprintf("%s%s", inst.list[tn-1], time.Now().String())))
+			inst.list[tn-1].Uuid = fmt.Sprintf("%x", uuid.Sum(nil))
+		}
+
+		inst.list[task-1].LinkedTask[inst.list[tn-1].Uuid] = struct{}{}
+	}
+
 	return inst.save()
 }
 
@@ -193,6 +247,32 @@ func (inst *TaskList) ChangeDueFinishDate(dft *time.Time, idx int) error {
 		return fmt.Errorf("invalid index\n")
 	}
 	inst.list[idx-1].DueFinishDate = dft
+	return inst.save()
+}
+
+func (inst *TaskList) ChangeLinkedTasks(numTask int, linkedTasks ...int) error {
+	var linkedTaskMap = make(map[string]struct{}, 0)
+
+	for _, task := range linkedTasks {
+		if task <= 0 || task > len(inst.list) {
+			return fmt.Errorf("invalid index\n")
+		}
+
+		if inst.list[task-1].Uuid == "" {
+			uuid := sha1.New()
+			uuid.Write([]byte(fmt.Sprintf("%s%s", inst.list[task-1], time.Now().String())))
+			inst.list[task-1].Uuid = fmt.Sprintf("%x", uuid.Sum(nil))
+		}
+
+		linkedTaskMap[inst.list[task-1].Uuid] = struct{}{}
+	}
+
+	if numTask <= 0 || numTask > len(inst.list) {
+		return fmt.Errorf("invalid index\n")
+	}
+
+	inst.list[numTask-1].LinkedTask = linkedTaskMap
+
 	return inst.save()
 }
 
@@ -264,8 +344,8 @@ func (inst *TaskList) ViewInfo(index int) error {
 
 func (inst *TaskList) ViewTasks() error {
 	var (
-		cells [][]*simpletable.Cell
-		tc    string
+		cells                [][]*simpletable.Cell
+		taskTimeCompletedVal string
 	)
 
 	table := simpletable.New()
@@ -279,11 +359,12 @@ func (inst *TaskList) ViewTasks() error {
 				{Align: simpletable.AlignCenter, Text: "CreateAt"},
 				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
 				{Align: simpletable.AlignCenter, Text: "Due Finish Date"},
+				{Align: simpletable.AlignCenter, Text: "Linked Tasks"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 6, Text: "Tasks"},
+			{Align: simpletable.AlignCenter, Span: 7, Text: "Tasks"},
 		}}
 
 	} else if inst.language == "RUS" {
@@ -295,54 +376,80 @@ func (inst *TaskList) ViewTasks() error {
 				{Align: simpletable.AlignCenter, Text: "Создано"},
 				{Align: simpletable.AlignCenter, Text: "Дата/Время Выполнения"},
 				{Align: simpletable.AlignCenter, Text: "Срок Окончания"},
+				{Align: simpletable.AlignCenter, Text: "Связаные задачи"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 6, Text: "Задачи"},
+			{Align: simpletable.AlignCenter, Span: 7, Text: "Задачи"},
 		}}
 	}
 
 	for idx, task := range inst.list {
-		var t, s, ft string
+		var linkedTasksUuids []string
+		var taskNameVal, taskStatusVal, taskFinishTimeVal string
 		idx++
 		if inst.language == "RUS" {
-			t = blue(task.Name)
-			s = red("Не выполнена")
+			taskNameVal = blue(task.Name)
+			taskStatusVal = red("Не выполнена")
 			if task.Done {
-				t = green(task.Name)
-				s = green("Выполнена")
+				taskNameVal = green(task.Name)
+				taskStatusVal = green("Выполнена")
 			}
 		} else {
-			t = blue(task.Name)
-			s = red("not completed")
+			taskNameVal = blue(task.Name)
+			taskStatusVal = red("not completed")
 			if task.Done {
-				t = green(task.Name)
-				s = green("completed")
+				taskNameVal = green(task.Name)
+				taskStatusVal = green("completed")
 			}
 		}
 
 		if task.CompleteAt != nil {
-			tc = task.CompleteAt.Format(time.DateTime)
+			taskTimeCompletedVal = task.CompleteAt.Format(time.DateTime)
 		} else {
-			tc = ""
+			taskTimeCompletedVal = ""
 		}
 
 		if task.DueFinishDate != nil {
-			ft = task.DueFinishDate.Format(time.DateOnly)
+			taskFinishTimeVal = task.DueFinishDate.Format(time.DateOnly)
 		} else {
-			ft = ""
+			taskFinishTimeVal = ""
+		}
+
+		for taskUuid, _ := range task.LinkedTask {
+			linkedTask, num := inst.taskByUuid(taskUuid)
+			linkedTaskName := linkedTask.Name
+			taskNameFields := strings.Fields(linkedTaskName)
+			if len(taskNameFields) > 3 {
+				linkedTaskName = fmt.Sprintf(
+					"#%d: %s",
+					*num+1,
+					fmt.Sprintf("%v...", strings.Join(taskNameFields[:3], " ")),
+				)
+			} else {
+				linkedTaskName = fmt.Sprintf("#%d: %s", *num+1, linkedTaskName)
+			}
+
+			if linkedTask.Done {
+				linkedTaskName = green(linkedTaskName)
+			} else {
+				linkedTaskName = blue(linkedTaskName)
+			}
+
+			linkedTasksUuids = append(linkedTasksUuids, linkedTaskName)
 		}
 
 		cells = append(
 			cells,
 			*&[]*simpletable.Cell{
 				{Text: fmt.Sprintf("%d", idx)},
-				{Text: t},
-				{Text: fmt.Sprintf("%s", s)},
+				{Text: taskNameVal},
+				{Text: fmt.Sprintf("%s", taskStatusVal)},
 				{Text: task.CreateAt.Format(time.DateTime)},
-				{Text: tc},
-				{Text: ft},
+				{Text: taskTimeCompletedVal},
+				{Text: taskFinishTimeVal},
+				{Text: strings.Join(linkedTasksUuids, "\n ")},
 			},
 		)
 	}
@@ -361,6 +468,7 @@ func (inst *TaskList) ViewTask(index int) error {
 		tc    string
 	)
 
+	task := inst.list[index-1]
 	table := simpletable.New()
 
 	if inst.language == "ENG" {
@@ -371,11 +479,13 @@ func (inst *TaskList) ViewTask(index int) error {
 				{Align: simpletable.AlignCenter, Text: "Status"},
 				{Align: simpletable.AlignCenter, Text: "CreateAt"},
 				{Align: simpletable.AlignCenter, Text: "CompletedAt"},
+				{Align: simpletable.AlignCenter, Text: "Due Finish Date"},
+				{Align: simpletable.AlignCenter, Text: "Linked Tasks"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 5, Text: "Tasks"},
+			{Align: simpletable.AlignCenter, Span: 7, Text: "Tasks"},
 		}}
 
 	} else if inst.language == "RUS" {
@@ -385,36 +495,69 @@ func (inst *TaskList) ViewTask(index int) error {
 				{Align: simpletable.AlignCenter, Text: "Задача"},
 				{Align: simpletable.AlignCenter, Text: "Статус"},
 				{Align: simpletable.AlignCenter, Text: "Создано"},
-				{Align: simpletable.AlignCenter, Text: "Выполненно"},
+				{Align: simpletable.AlignCenter, Text: "Дата/Время Выполнения"},
+				{Align: simpletable.AlignCenter, Text: "Срок Окончания"},
+				{Align: simpletable.AlignCenter, Text: "Связаные задачи"},
 			},
 		}
 
 		table.Footer = &simpletable.Footer{Cells: []*simpletable.Cell{
-			{Align: simpletable.AlignCenter, Span: 5, Text: "Задачи"},
+			{Align: simpletable.AlignCenter, Span: 7, Text: "Задачи"},
 		}}
 	}
 
-	var t, s string
+	var linkedTasks []string
+	var t, s, ft string
+
 	if inst.language == "RUS" {
-		t = blue(inst.list[index-1].Name)
+		t = blue(task.Name)
 		s = red("невыполненна")
-		if inst.list[index-1].Done {
-			t = green(inst.list[index-1].Name)
+		if task.Done {
+			t = green(task.Name)
 			s = green("выполненна")
 		}
 	} else {
-		t = blue(inst.list[index-1].Name)
+		t = blue(task.Name)
 		s = red("no")
-		if inst.list[index-1].Done {
-			t = green(inst.list[index-1].Name)
+		if task.Done {
+			t = green(task.Name)
 			s = green("yes")
 		}
 	}
 
-	if inst.list[index-1].CompleteAt != nil {
-		tc = inst.list[index-1].CompleteAt.Format(time.RFC822)
+	if task.CompleteAt != nil {
+		tc = task.CompleteAt.Format(time.RFC822)
 	} else {
 		tc = ""
+	}
+
+	if task.DueFinishDate != nil {
+		ft = task.DueFinishDate.Format(time.DateOnly)
+	} else {
+		ft = ""
+	}
+
+	for taskUuid, _ := range task.LinkedTask {
+		linkedTask, num := inst.taskByUuid(taskUuid)
+		linkedTaskName := linkedTask.Name
+		tn := strings.Fields(linkedTaskName)
+		if len(tn) > 3 {
+			linkedTaskName = fmt.Sprintf(
+				"#%d: %s",
+				*num+1,
+				fmt.Sprintf("%v...", strings.Join(tn[:3], " ")),
+			)
+		} else {
+			linkedTaskName = fmt.Sprintf("#%d: %s", *num+1, linkedTaskName)
+		}
+
+		if linkedTask.Done {
+			linkedTaskName = green(linkedTaskName)
+		} else {
+			linkedTaskName = blue(linkedTaskName)
+		}
+
+		linkedTasks = append(linkedTasks, linkedTaskName)
 	}
 
 	cells = append(
@@ -423,8 +566,10 @@ func (inst *TaskList) ViewTask(index int) error {
 			{Text: fmt.Sprintf("%d", index)},
 			{Text: t},
 			{Text: fmt.Sprintf("%s", s)},
-			{Text: inst.list[index-1].CreateAt.Format(time.RFC822)},
+			{Text: task.CreateAt.Format(time.DateTime)},
 			{Text: tc},
+			{Text: ft},
+			{Text: strings.Join(linkedTasks, "\n ")},
 		},
 	)
 
@@ -443,4 +588,13 @@ func (inst *TaskList) save() error {
 	}
 
 	return ioutil.WriteFile(inst.store, b, 0644)
+}
+
+func (inst *TaskList) taskByUuid(uuid string) (*Task, *int) {
+	for num, task := range inst.list {
+		if task.Uuid == uuid {
+			return &task, &num
+		}
+	}
+	return nil, nil
 }
